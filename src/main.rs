@@ -1,12 +1,19 @@
-use std::{ffi::OsStr, os::windows::ffi::OsStrExt};
+use std::{os::windows::ffi::OsStrExt, path::PathBuf};
 
+use clap::Parser;
 use winapi::um::libloaderapi::{FreeLibrary, GetProcAddress, LoadLibraryW};
 
-fn main() {
-    let dll_path = "hello_world.dll";
+#[derive(Parser)]
+struct Cli {
+    path: PathBuf,
+}
 
-    let path: Vec<_> = OsStr::new(dll_path).encode_wide().chain(Some(0)).collect();
-    let handle = unsafe { LoadLibraryW(path.as_ptr()) };
+fn main() {
+    let cli = Cli::parse();
+
+    let dll_path: Vec<_> = cli.path.as_os_str().encode_wide().chain(Some(0)).collect();
+
+    let handle = unsafe { LoadLibraryW(dll_path.as_ptr()) };
 
     if handle.is_null() {
         eprintln!(
@@ -24,7 +31,7 @@ fn main() {
         );
     }
 
-    let hello_world: fn() = unsafe { std::mem::transmute(addr) };
+    let hello_world: extern "C" fn() = unsafe { std::mem::transmute(addr) };
     hello_world();
 
     unsafe { FreeLibrary(handle) };
