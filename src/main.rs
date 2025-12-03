@@ -1,28 +1,23 @@
-use std::{os::windows::ffi::OsStrExt, path::PathBuf};
+use std::path::PathBuf;
 
 use clap::Parser;
-use winapi::um::libloaderapi::{FreeLibrary, GetProcAddress, LoadLibraryW};
+use winapi::um::libloaderapi::GetProcAddress;
+
+use crate::handler::DllManager;
+
+mod handler;
 
 #[derive(Parser)]
 struct Cli {
     path: PathBuf,
 }
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    let dll_path: Vec<_> = cli.path.as_os_str().encode_wide().chain(Some(0)).collect();
+    let manager = DllManager::new(cli.path)?;
 
-    let handle = unsafe { LoadLibraryW(dll_path.as_ptr()) };
-
-    if handle.is_null() {
-        eprintln!(
-            "Failed to load DLL, error: {:?}",
-            std::io::Error::last_os_error()
-        );
-        return;
-    }
-    let addr = unsafe { GetProcAddress(handle, c"hello_world".as_ptr()) };
+    let addr = unsafe { GetProcAddress(manager.handle.as_ptr(), c"hello_world".as_ptr()) };
 
     if addr.is_null() {
         eprintln!(
@@ -34,5 +29,5 @@ fn main() {
     let hello_world: extern "C" fn() = unsafe { std::mem::transmute(addr) };
     hello_world();
 
-    unsafe { FreeLibrary(handle) };
+    Ok(())
 }
