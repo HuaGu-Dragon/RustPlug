@@ -1,13 +1,13 @@
-use std::{os::windows::ffi::OsStrExt, path::Path, ptr::NonNull};
+use std::{ffi::CString, os::windows::ffi::OsStrExt, path::Path, ptr::NonNull};
 
 use anyhow::Context;
 use winapi::{
     shared::minwindef::HINSTANCE__,
-    um::libloaderapi::{FreeLibrary, LoadLibraryW},
+    um::libloaderapi::{FreeLibrary, GetProcAddress, LoadLibraryW},
 };
 
 pub struct DllManager {
-    pub handle: NonNull<HINSTANCE__>,
+    handle: NonNull<HINSTANCE__>,
 }
 
 impl DllManager {
@@ -28,6 +28,33 @@ impl DllManager {
         })?;
 
         Ok(Self { handle })
+    }
+
+    /// # Safety
+    ///
+    /// We ensure that the function pointer is valid and can be safely transmuted.
+    pub unsafe fn get_func(&self, name: impl AsRef<str>) -> anyhow::Result<extern "C" fn()> {
+        let func = unsafe {
+            GetProcAddress(
+                self.handle.as_ptr(),
+                CString::new(name.as_ref())
+                    .context("Convert Rust str to Cstr")?
+                    .as_ptr(),
+            )
+        };
+
+        if func.is_null() {
+            anyhow::bail!(
+                "Failed to find function, error: {:?}",
+                std::io::Error::last_os_error()
+            )
+        }
+
+        Ok(unsafe {
+            std::mem::transmute::<*mut winapi::shared::minwindef::__some_function, extern "C" fn()>(
+                func,
+            )
+        })
     }
 }
 
