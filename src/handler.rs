@@ -1,6 +1,7 @@
 use std::{ffi::CString, os::windows::ffi::OsStrExt, path::Path, ptr::NonNull};
 
 use anyhow::Context;
+use libffi::{low::CodePtr, middle::Cif};
 use winapi::{
     shared::minwindef::HINSTANCE__,
     um::libloaderapi::{FreeLibrary, GetProcAddress, LoadLibraryW},
@@ -55,6 +56,34 @@ impl DllManager {
                 func,
             )
         })
+    }
+
+    /// Calls a function with the given arguments.
+    ///
+    /// In particular, this method invokes function `func` passing it
+    /// arguments `args`, and returns the result.
+    ///
+    /// # Safety
+    ///
+    /// There is no checking that the calling convention and types
+    /// in the `Cif` match the actual calling convention and types of
+    /// `fun`, nor that they match the types of `args`.
+    pub unsafe fn call_func<R>(
+        &self,
+        func: impl AsRef<str>,
+        args: Vec<(libffi::middle::Type, libffi::middle::Arg)>,
+        ret: libffi::middle::Type,
+    ) -> anyhow::Result<R> {
+        let func = unsafe {
+            self.get_func(func)
+                .context("Get func addr from Dynamic Lib")?
+        };
+
+        let (types, values): (Vec<_>, Vec<_>) = args.into_iter().unzip();
+
+        let cif = Cif::new(types, ret);
+
+        Ok(unsafe { cif.call(CodePtr::from_fun(func), &values) })
     }
 }
 

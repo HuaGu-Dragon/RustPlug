@@ -13,9 +13,7 @@ fn main() -> anyhow::Result<()> {
 
     let manager = DllManager::new(cli.path)?;
 
-    let hello_world = unsafe { manager.get_func("hello_world") }?;
-
-    hello_world();
+    unsafe { manager.call_func::<()>("hello_world", vec![], libffi::middle::Type::void())? };
 
     Ok(())
 }
