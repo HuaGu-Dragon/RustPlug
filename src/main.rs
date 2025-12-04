@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use anyhow::Context;
 use clap::Parser;
 use rust_plug::handler::DllManager;
 
@@ -13,7 +14,32 @@ fn main() -> anyhow::Result<()> {
 
     let manager = DllManager::new(cli.path)?;
 
-    unsafe { manager.call_func::<()>("hello_world", vec![], libffi::middle::Type::void())? };
+    let mut stdin = String::new();
+    loop {
+        std::io::stdin()
+            .read_line(&mut stdin)
+            .context("read input from stdin")?;
+
+        let input = stdin.trim();
+        if input == ":q" {
+            break;
+        }
+
+        let mut input = input.split_whitespace();
+
+        let func = input.next().context("")?;
+        let parsed_args = input
+            .map(|arg| arg.parse::<i32>().unwrap())
+            .collect::<Vec<_>>();
+
+        let args = parsed_args
+            .iter()
+            .map(|arg| (libffi::middle::Type::i32(), libffi::middle::arg(arg)));
+
+        unsafe { manager.call_func::<()>(func, args, libffi::middle::Type::void())? };
+
+        stdin.clear();
+    }
 
     Ok(())
 }

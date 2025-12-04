@@ -68,10 +68,10 @@ impl DllManager {
     /// There is no checking that the calling convention and types
     /// in the `Cif` match the actual calling convention and types of
     /// `fun`, nor that they match the types of `args`.
-    pub unsafe fn call_func<R>(
+    pub unsafe fn call_func<'arg, R>(
         &self,
         func: impl AsRef<str>,
-        args: Vec<(libffi::middle::Type, libffi::middle::Arg)>,
+        args: impl IntoIterator<Item = (libffi::middle::Type, libffi::middle::Arg<'arg>)>,
         ret: libffi::middle::Type,
     ) -> anyhow::Result<R> {
         let func = unsafe {
