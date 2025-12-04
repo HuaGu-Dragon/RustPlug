@@ -1,5 +1,5 @@
 [workspace]
-members = ["hello_world"]
+members = ["hello_world", "math"]
 
 [package]
 name = "rust_plug"
