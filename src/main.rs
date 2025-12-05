@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{ffi::CString, path::PathBuf};
 
 use anyhow::Context;
 use clap::Parser;
@@ -14,18 +14,18 @@ fn main() -> anyhow::Result<()> {
 
     let manager = DllManager::new(cli.path)?;
 
-    unsafe {
-        let title = c"Hello".as_ptr();
-        manager.call_func::<()>(
-            "InitWindow",
-            vec![
-                (libffi::middle::Type::c_int(), libffi::middle::arg(&800)),
-                (libffi::middle::Type::c_int(), libffi::middle::arg(&450)),
-                (libffi::middle::Type::pointer(), libffi::middle::arg(&title)),
-            ],
-            libffi::middle::Type::void(),
-        )?
-    };
+    // unsafe {
+    //     let title = c"Hello".as_ptr();
+    //     manager.call_func::<()>(
+    //         "InitWindow",
+    //         vec![
+    //             (libffi::middle::Type::c_int(), libffi::middle::arg(&800)),
+    //             (libffi::middle::Type::c_int(), libffi::middle::arg(&450)),
+    //             (libffi::middle::Type::pointer(), libffi::middle::arg(&title)),
+    //         ],
+    //         libffi::middle::Type::void(),
+    //     )?
+    // };
 
     let mut stdin = String::new();
     loop {
@@ -41,13 +41,12 @@ fn main() -> anyhow::Result<()> {
         let mut input = input.split_whitespace();
 
         let func = input.next().context("")?;
-        let parsed_args = input
-            .map(|arg| arg.parse::<i32>().unwrap())
-            .collect::<Vec<_>>();
+        let parsed_args = input.map(lexer).collect::<Vec<_>>();
 
-        let args = parsed_args
-            .iter()
-            .map(|arg| (libffi::middle::Type::i32(), libffi::middle::arg(arg)));
+        let args = parsed_args.iter().map(|arg| match arg {
+            InputType::Interger(i) => (libffi::middle::Type::c_int(), libffi::middle::arg(i)),
+            InputType::Text(_, ptr) => (libffi::middle::Type::pointer(), libffi::middle::arg(ptr)),
+        });
 
         unsafe { manager.call_func::<()>(func, args, libffi::middle::Type::void())? };
 
@@ -55,4 +54,20 @@ fn main() -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+enum InputType {
+    Interger(i32),
+    Text(CString, *const i8),
+}
+
+fn lexer(input: &str) -> InputType {
+    if input.starts_with('"') {
+        let end = input.rfind('"').expect("");
+        let s = CString::new(&input[1..end]).expect("");
+        let ptr = s.as_ptr();
+        InputType::Text(s, ptr)
+    } else {
+        InputType::Interger(input.parse().expect(""))
+    }
 }
