@@ -5,6 +5,8 @@ use std::{
 
 use anyhow::Context;
 use clap::Parser;
+use libffi::middle::{Arg, Type};
+use logos::{Lexer, Logos};
 use rust_plug::handler::DllManager;
 
 #[derive(Parser)]
@@ -28,15 +30,17 @@ fn main() -> anyhow::Result<()> {
             break;
         }
 
-        let mut input = input.split_whitespace();
+        let func_end = input.find(' ').unwrap_or(input.len());
 
-        let func = input.next().context("")?;
-        let parsed_args = input.map(lexer).collect::<Vec<_>>();
+        let func = &input[..func_end];
 
-        let args = parsed_args.iter().map(|arg| match arg {
-            InputType::Interger(i) => (libffi::middle::Type::c_int(), libffi::middle::arg(i)),
-            InputType::Text(_, ptr) => (libffi::middle::Type::pointer(), libffi::middle::arg(ptr)),
-        });
+        // Is sad to allocate a vector for args
+        // because we need to assume that `CString` is not dropped during the call
+        let values = Token::lexer(&input[func_end..])
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|_| anyhow::anyhow!("Failed to parse arguments"))?;
+
+        let args = values.iter().map(parse_args);
 
         unsafe { manager.call_func::<()>(func, args, libffi::middle::Type::void())? };
 
@@ -46,22 +50,17 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-enum InputType {
-    Interger(i32),
-    Text(CString, *const i8),
-}
-
-fn lexer(input: &str) -> InputType {
-    if input.starts_with('"') {
-        let end = input.rfind('"').expect("missing closing quote");
-        let s = CString::new(&input[1..end]).expect("invalid C string");
-        println!("{s:?}");
-        InputType::Text(s)
-    } else {
-        InputType::Integer(input.parse().expect("invalid integer"))
+fn parse_args(arg: &Token) -> (Type, Arg<'_>) {
+    match arg {
+        Token::String(string_wrapper) => (Type::pointer(), Arg::new(&string_wrapper.ptr)),
+        Token::Float(f) => (Type::f64(), Arg::new(f)),
+        Token::Integer(i) => (Type::i32(), Arg::new(i)),
     }
 }
 
+// The StringWrapper struct is used to wrap a CString and provide a pointer to its contents.
+// To avoid multiple allocations, we use a single CString and a pointer to its contents.
+// Because we can't not create a `ref` to  `CString`, during steam handling
 #[derive(Debug)]
 struct StringWrapper {
     inner: CString,
