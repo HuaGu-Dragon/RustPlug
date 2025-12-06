@@ -58,3 +58,46 @@ fn lexer(input: &str) -> InputType {
         InputType::Interger(input.parse().expect(""))
     }
 }
+
+#[derive(Debug, Logos, PartialEq)]
+#[logos(skip r"[ \t\n\f]+")]
+enum Token {
+    #[regex(
+        r#""([^"\\\x00-\x1F]|\\(["\\bnfrt/]|u[a-fA-F0-9]{4}))*""#,
+        get_string_content
+    )]
+    String(CString),
+
+    #[regex(r"-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?", |lex| lex.slice().parse::<f64>().unwrap(), priority = 1)]
+    Float(f64),
+
+    #[regex(r"-?(?:0|[1-9]\d*)", |lex| lex.slice().parse::<i32>().unwrap(), priority = 2)]
+    Integer(i32),
+}
+
+fn get_string_content(lex: &mut Lexer<Token>) -> CString {
+    CString::new(&lex.slice().as_bytes()[1..lex.slice().len() - 1]).expect("invalid C String")
+}
+
+#[test]
+fn test_lex_string() {
+    let mut lex = Token::lexer(r#" "" "String" "#);
+
+    assert_eq!(lex.next(), Some(Ok(Token::String(CString::from(c"")))));
+    assert_eq!(
+        lex.next(),
+        Some(Ok(Token::String(CString::from(c"String"))))
+    );
+    assert_eq!(lex.next(), None);
+}
+
+#[test]
+fn test_lex_number() {
+    let mut lex = Token::lexer(r#" 42 -123 1.14 1.23e-4 "#);
+
+    assert_eq!(lex.next(), Some(Ok(Token::Integer(42))));
+    assert_eq!(lex.next(), Some(Ok(Token::Integer(-123))));
+    assert_eq!(lex.next(), Some(Ok(Token::Float(1.14))));
+    assert_eq!(lex.next(), Some(Ok(Token::Float(1.23e-4))));
+    assert_eq!(lex.next(), None);
+}

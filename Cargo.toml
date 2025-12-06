@@ -10,4 +10,5 @@ edition = "2024"
 anyhow = "1.0.100"
 clap = { version = "4.5.53", features = ["derive"] }
 libffi = "5.0.0"
+logos = "0.15.1"
 winapi = { version = "0.3.9", features = ["libloaderapi"] }
