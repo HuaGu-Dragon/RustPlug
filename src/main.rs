@@ -1,4 +1,7 @@
-use std::{ffi::CString, path::PathBuf};
+use std::{
+    ffi::{CString, c_char},
+    path::PathBuf,
+};
 
 use anyhow::Context;
 use clap::Parser;
@@ -50,12 +53,32 @@ enum InputType {
 
 fn lexer(input: &str) -> InputType {
     if input.starts_with('"') {
-        let end = input.rfind('"').expect("");
-        let s = CString::new(&input[1..end]).expect("");
-        let ptr = s.as_ptr();
-        InputType::Text(s, ptr)
+        let end = input.rfind('"').expect("missing closing quote");
+        let s = CString::new(&input[1..end]).expect("invalid C string");
+        println!("{s:?}");
+        InputType::Text(s)
     } else {
-        InputType::Interger(input.parse().expect(""))
+        InputType::Integer(input.parse().expect("invalid integer"))
+    }
+}
+
+#[derive(Debug)]
+struct StringWrapper {
+    inner: CString,
+    ptr: *const c_char,
+}
+
+impl StringWrapper {
+    fn new(s: impl AsRef<[u8]>) -> Self {
+        let inner = CString::new(s.as_ref()).expect("invalid C string");
+        let ptr = inner.as_ptr();
+        Self { inner, ptr }
+    }
+}
+
+impl PartialEq for StringWrapper {
+    fn eq(&self, other: &Self) -> bool {
+        self.inner == other.inner
     }
 }
 
@@ -66,7 +89,7 @@ enum Token {
         r#""([^"\\\x00-\x1F]|\\(["\\bnfrt/]|u[a-fA-F0-9]{4}))*""#,
         get_string_content
     )]
-    String(CString),
+    String(StringWrapper),
 
     #[regex(r"-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?", |lex| lex.slice().parse::<f64>().unwrap(), priority = 1)]
     Float(f64),
@@ -75,18 +98,18 @@ enum Token {
     Integer(i32),
 }
 
-fn get_string_content(lex: &mut Lexer<Token>) -> CString {
-    CString::new(&lex.slice().as_bytes()[1..lex.slice().len() - 1]).expect("invalid C String")
+fn get_string_content(lex: &mut Lexer<Token>) -> StringWrapper {
+    StringWrapper::new(&lex.slice().as_bytes()[1..lex.slice().len() - 1])
 }
 
 #[test]
 fn test_lex_string() {
     let mut lex = Token::lexer(r#" "" "String" "#);
 
-    assert_eq!(lex.next(), Some(Ok(Token::String(CString::from(c"")))));
+    assert_eq!(lex.next(), Some(Ok(Token::String(StringWrapper::new("")))));
     assert_eq!(
         lex.next(),
-        Some(Ok(Token::String(CString::from(c"String"))))
+        Some(Ok(Token::String(StringWrapper::new("String"))))
     );
     assert_eq!(lex.next(), None);
 }
