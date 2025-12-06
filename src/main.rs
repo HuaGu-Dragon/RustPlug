@@ -14,19 +14,6 @@ fn main() -> anyhow::Result<()> {
 
     let manager = DllManager::new(cli.path)?;
 
-    // unsafe {
-    //     let title = c"Hello".as_ptr();
-    //     manager.call_func::<()>(
-    //         "InitWindow",
-    //         vec![
-    //             (libffi::middle::Type::c_int(), libffi::middle::arg(&800)),
-    //             (libffi::middle::Type::c_int(), libffi::middle::arg(&450)),
-    //             (libffi::middle::Type::pointer(), libffi::middle::arg(&title)),
-    //         ],
-    //         libffi::middle::Type::void(),
-    //     )?
-    // };
-
     let mut stdin = String::new();
     loop {
         std::io::stdin()
