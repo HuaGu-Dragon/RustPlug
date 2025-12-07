@@ -130,7 +130,7 @@ fn test_lex_number() {
 
 #[test]
 fn test_lex_hex() {
-    let mut lex = Token::lexer(r#" 0xFF000000 0x00FF00"#);
+    let mut lex = Token::lexer(r#" 0xFF000000 0x00FF00 "#);
 
     assert_eq!(lex.next(), Some(Ok(Token::Hex(0xFF000000))));
     assert_eq!(lex.next(), Some(Ok(Token::Hex(0x00FF00))));
