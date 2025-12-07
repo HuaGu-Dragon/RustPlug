@@ -53,8 +53,9 @@ fn main() -> anyhow::Result<()> {
 fn parse_args(arg: &Token) -> (Type, Arg<'_>) {
     match arg {
         Token::String(string_wrapper) => (Type::pointer(), Arg::new(&string_wrapper.ptr)),
-        Token::Float(f) => (Type::f64(), Arg::new(f)),
+        Token::Float(f) => (Type::f32(), Arg::new(f)),
         Token::Integer(i) => (Type::i32(), Arg::new(i)),
+        Token::Hex(h) => (Type::u32(), Arg::new(h)),
     }
 }
 
@@ -90,6 +91,9 @@ enum Token {
     )]
     String(StringWrapper),
 
+    #[regex(r"0x[0-9a-fA-F]+", |lex| u32::from_str_radix(&lex.slice()[2..], 16).unwrap())]
+    Hex(u32),
+
     #[regex(r"-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?", |lex| lex.slice().parse::<f64>().unwrap(), priority = 1)]
     Float(f64),
 
@@ -121,5 +125,14 @@ fn test_lex_number() {
     assert_eq!(lex.next(), Some(Ok(Token::Integer(-123))));
     assert_eq!(lex.next(), Some(Ok(Token::Float(1.14))));
     assert_eq!(lex.next(), Some(Ok(Token::Float(1.23e-4))));
+    assert_eq!(lex.next(), None);
+}
+
+#[test]
+fn test_lex_hex() {
+    let mut lex = Token::lexer(r#" 0xFF000000 0x00FF00"#);
+
+    assert_eq!(lex.next(), Some(Ok(Token::Hex(0xFF000000))));
+    assert_eq!(lex.next(), Some(Ok(Token::Hex(0x00FF00))));
     assert_eq!(lex.next(), None);
 }
