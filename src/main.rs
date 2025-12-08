@@ -57,7 +57,7 @@ fn parse_args(arg: &Token) -> (Type, Arg<'_>) {
 }
 
 #[derive(Debug, Logos, PartialEq)]
-#[logos(skip r"[ \t\n\f]+")]
+#[logos(skip r"[ ,\t\n\f]+")]
 enum Token {
     #[regex(
         r#""([^"\\\x00-\x1F]|\\(["\\bnfrt/]|u[a-fA-F0-9]{4}))*""#,
@@ -111,5 +111,16 @@ fn test_lex_hex() {
 
     assert_eq!(lex.next(), Some(Ok(Token::Hex(0xFF000000))));
     assert_eq!(lex.next(), Some(Ok(Token::Hex(0x00FF00))));
+    assert_eq!(lex.next(), None);
+}
+
+#[test]
+fn test_lex() {
+    let mut lex = Token::lexer(r#" 100, 80, 90, 90"#);
+
+    assert_eq!(lex.next(), Some(Ok(Token::Integer(100))));
+    assert_eq!(lex.next(), Some(Ok(Token::Integer(80))));
+    assert_eq!(lex.next(), Some(Ok(Token::Integer(90))));
+    assert_eq!(lex.next(), Some(Ok(Token::Integer(90))));
     assert_eq!(lex.next(), None);
 }
