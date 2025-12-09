@@ -16,7 +16,7 @@ impl DllManager {
     pub fn new(path: impl AsRef<Path>) -> anyhow::Result<Self> {
         let path = path.as_ref();
         if !path.exists() {
-            anyhow::bail!("file did not exit");
+            anyhow::bail!("file did not exist");
         }
 
         let dll_path: Vec<_> = path.as_os_str().encode_wide().chain(Some(0)).collect();
@@ -24,7 +24,7 @@ impl DllManager {
         let handle = unsafe { LoadLibraryW(dll_path.as_ptr()) };
         let handle = NonNull::new(handle).with_context(|| {
             format!(
-                "Failed to load DLL, error: {:?}",
+                "Failed to load Dynamic Lib, error: {:?}",
                 std::io::Error::last_os_error()
             )
         })?;
