@@ -2,6 +2,7 @@ use std::{ffi::CString, os::windows::ffi::OsStrExt, path::Path, ptr::NonNull};
 
 use anyhow::Context;
 use libffi::{low::CodePtr, middle::Cif};
+
 use winapi::{
     shared::minwindef::HINSTANCE__,
     um::libloaderapi::{FreeLibrary, GetProcAddress, LoadLibraryW},
