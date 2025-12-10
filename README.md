@@ -50,3 +50,20 @@ sub 3 4
 ```
 
 - then the functions will be executed and the results will be printed.
+
+## Funny Usage
+
+call the raylib to create a window and draw a rectangle:
+
+![raylib](./raylib.png)
+
+```bash
+InitWindow 800 650 "Create by rust_plug"
+BeginDrawing
+DrawRectangle 100 100 80 80 0xFF0000FF
+EndDrawing
+CloseWindow
+:q
+```
+
+- Notice, that 0xFF0000FF is a hex color code for red. but it's ABGR, not RGBA. Because of the endianness of the CPU architecture, raylib use a struct with four u8, but we parse hex color code as u32.
