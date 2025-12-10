@@ -50,7 +50,7 @@ fn main() -> anyhow::Result<()> {
 fn parse_args(arg: &Token) -> (Type, Arg<'_>) {
     match arg {
         Token::String(c) => (Type::pointer(), Arg::new(c)),
-        Token::Float(f) => (Type::f32(), Arg::new(f)),
+        Token::Float(f) => (Type::f64(), Arg::new(f)),
         Token::Integer(i) => (Type::i32(), Arg::new(i)),
         Token::Hex(h) => (Type::u32(), Arg::new(h)),
     }
