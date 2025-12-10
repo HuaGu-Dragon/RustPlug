@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::Context;
-use libc::{RTLD_LAZY, dlopen, dlsym};
+use libc::{RTLD_LAZY, dlclose, dlopen, dlsym};
 use libffi::{low::CodePtr, middle::Cif};
 
 pub struct DllManager {
@@ -85,5 +85,13 @@ impl DllManager {
         let cif = Cif::new(types, ret);
 
         Ok(unsafe { cif.call(CodePtr::from_fun(func), &values) })
+    }
+}
+
+impl Drop for DllManager {
+    fn drop(&mut self) {
+        unsafe {
+            dlclose(self.handle.as_ptr());
+        }
     }
 }
